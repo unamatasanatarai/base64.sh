@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Robust test framework for base64_encode.sh
+# Robust test framework for base64_decode.sh
 # Features:
 #   - Pass/Fail display
 #   - Summary report
@@ -13,11 +13,10 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENCODER="$SCRIPT_DIR/base64_encode.sh"
+DECODER="$SCRIPT_DIR/base64_decode.sh"
 
 STOP_ON_FAIL=0
 
-# Counters
 TOTAL=0
 PASSED=0
 FAILED=0
@@ -51,7 +50,7 @@ done
 # Test function
 # ─────────────────────────────────────────────────────────────
 
-test_encode() {
+test_decode() {
     local input="$1"
     local expected="$2"
     local description="${3:-}"
@@ -59,7 +58,7 @@ test_encode() {
     ((TOTAL++)) || true
 
     local result
-    result=$("$ENCODER" "$input" 2>&1) || true
+    result=$("$DECODER" "$input" 2>&1) || true
 
     local display_input="$input"
     [[ ${#display_input} -gt 30 ]] && display_input="${display_input:0:27}..."
@@ -82,13 +81,15 @@ test_encode() {
     fi
 }
 
-# Compare against system base64
+# Compare against system base64 decoder
 test_vs_system() {
-    local input="$1"
-    local description="${2:-$input}"
-    local expected
-    expected=$(printf "%s" "$input" | base64 -w 0)
-    test_encode "$input" "$expected" "$description"
+    local raw="$1"
+    local description="${2:-$raw}"
+
+    local encoded
+    encoded=$(printf "%s" "$raw" | base64 -w 0)
+
+    test_decode "$encoded" "$raw" "$description"
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -111,16 +112,16 @@ print_summary() {
 # Test Cases
 # ─────────────────────────────────────────────────────────────
 
-printf "=== Base64 Encoder Tests ===\n\n"
+printf "=== Base64 Decoder Tests ===\n\n"
 
 # RFC 4648 test vectors
 printf "── RFC 4648 Test Vectors ──\n"
-test_encode "f" "Zg==" "Single char 'f'"
-test_encode "fo" "Zm8=" "Two chars 'fo'"
-test_encode "foo" "Zm9v" "Three chars 'foo'"
-test_encode "foob" "Zm9vYg==" "Four chars 'foob'"
-test_encode "fooba" "Zm9vYmE=" "Five chars 'fooba'"
-test_encode "foobar" "Zm9vYmFy" "Six chars 'foobar'"
+test_decode "Zg==" "f" "Single char 'f'"
+test_decode "Zm8=" "fo" "Two chars 'fo'"
+test_decode "Zm9v" "foo" "Three chars 'foo'"
+test_decode "Zm9vYg==" "foob" "Four chars 'foob'"
+test_decode "Zm9vYmE=" "fooba" "Five chars 'fooba'"
+test_decode "Zm9vYmFy" "foobar" "Six chars 'foobar'"
 
 # Single characters
 printf "\n── Single Characters ──\n"
@@ -133,45 +134,45 @@ test_vs_system "9" "digit 9"
 
 # Length variations
 printf "\n── Length Variations ──\n"
-test_vs_system "AB" "2 chars"
-test_vs_system "ABC" "3 chars"
-test_vs_system "ABCD" "4 chars"
-test_vs_system "ABCDE" "5 chars"
-test_vs_system "ABCDEF" "6 chars"
-test_vs_system "ABCDEFG" "7 chars"
-test_vs_system "ABCDEFGH" "8 chars"
-test_vs_system "ABCDEFGHI" "9 chars"
+test_vs_system "AB"
+test_vs_system "ABC"
+test_vs_system "ABCD"
+test_vs_system "ABCDE"
+test_vs_system "ABCDEF"
+test_vs_system "ABCDEFG"
+test_vs_system "ABCDEFGH"
+test_vs_system "ABCDEFGHI"
 
 # Special characters
 printf "\n── Special Characters ──\n"
-test_vs_system " " "single space"
-test_vs_system "  " "two spaces"
-test_vs_system "Hello World" "string with space"
-test_vs_system "Hello\tWorld" "string with tab"
-test_vs_system "!@#\$%^&*()" "punctuation marks"
-test_vs_system "foo=bar" "equals sign"
-test_vs_system "a+b" "plus sign"
-test_vs_system "path/to/file" "forward slashes"
+test_vs_system " "
+test_vs_system "  "
+test_vs_system "Hello World"
+test_vs_system $'Hello\tWorld'
+test_vs_system "!@#\$%^&*()"
+test_vs_system "foo=bar"
+test_vs_system "a+b"
+test_vs_system "path/to/file"
 
 # Mixed content
 printf "\n── Mixed Content ──\n"
-test_vs_system "abc123XYZ" "alphanumeric mix"
-test_vs_system "The quick brown fox" "sentence"
-test_vs_system "user@example.com" "email format"
-test_vs_system "https://example.com" "URL format"
+test_vs_system "abc123XYZ"
+test_vs_system "The quick brown fox"
+test_vs_system "user@example.com"
+test_vs_system "https://example.com"
 
 # Long strings
 printf "\n── Long Strings ──\n"
 test_vs_system "$(printf 'A%.0s' {1..50})" "50 A's"
 test_vs_system "$(printf 'AB%.0s' {1..50})" "100 chars (AB x 50)"
-test_vs_system "The quick brown fox jumps over the lazy dog" "pangram"
+test_vs_system "The quick brown fox jumps over the lazy dog"
 
 # Binary-like characters
 printf "\n── Binary-like Content ──\n"
-test_vs_system $'\x01' "SOH char (0x01)"
-test_vs_system $'\x7F' "DEL char (0x7F)"
-test_vs_system $'\xFF' "0xFF byte"
-# Note: Bash cannot handle null bytes (\x00) in variables - this is a language limitation
+test_vs_system $'\x01'
+test_vs_system $'\x7F'
+test_vs_system $'\xFF'
+# Note: Bash cannot store null bytes (\x00)
 
 # ─────────────────────────────────────────────────────────────
 # Summary and exit
