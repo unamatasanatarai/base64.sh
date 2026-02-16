@@ -1,6 +1,3 @@
-Here is the bare markdown version (no extra explanations, just the content):
-
-```markdown
 # base64.sh
 
 A pure Bash Base64 encoder **and decoder** implementation – no external tools required.
@@ -107,4 +104,3 @@ Format all scripts consistently:
 
 *Tests and README were vibecoded.  
 The encoder, decoder and formatting script are handmade and formatted with the included formatting script.*
-```
